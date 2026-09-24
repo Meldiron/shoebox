@@ -109,8 +109,27 @@ How the consent screen works:
 2. Signed-out users sign in with Auth UI on the page. `createGrant` then turns
    the forwarded parameters into a grant and reloads with its id.
 3. `getGrant` and `getApp` load what is being asked and by whom.
-4. Allow calls `approveGrant`, Deny calls `rejectGrant`. Both return the URL
-   that sends the user back to the client, with a code or `access_denied`.
+4. The user picks exactly one gallery to share. Allow calls `approveGrant`
+   with that gallery, Deny calls `rejectGrant`. Both return the URL that
+   sends the user back to the client, with a code or `access_denied`.
+
+### One gallery per grant (Rich Authorization Requests)
+
+Scopes say what a client may do; they cannot say which gallery. The consent
+screen adds that with an RFC 9396 authorization detail when it approves:
+
+```json
+[{ "type": "gallery", "identifiers": ["<GALLERY_ID>"] }]
+```
+
+Appwrite validates the type against the server's accepted list, stores it on
+the grant, and puts it in the token response, the access token, and
+introspection as `authorization_details`. A resource server should require
+both the scope and a `gallery` detail that names the gallery being read.
+
+The radio list defaults to the first gallery, or to the one a client
+preselected in its own `authorization_details`, and Allow stays disabled
+until one is chosen. A user with no galleries is asked to create one first.
 
 Enabled with the CLI (the command replaces the whole OAuth2 server config, so
 always pass every setting):
@@ -119,11 +138,14 @@ always pass every setting):
 appwrite project update-o-auth-2-server --enabled \
   --authorization-url "http://localhost:4321/consent" \
   --scopes openid --scopes profile --scopes email \
-  --default-scopes openid --default-scopes profile --default-scopes email
+  --default-scopes openid --default-scopes profile --default-scopes email \
+  --authorization-details-types gallery
 ```
 
-Point `--authorization-url` at `https://shoebox.appwrite.network/consent` for
-the deployed site.
+For the deployed site point `--authorization-url` at
+`https://shoebox.appwrite.network/consent/` with the trailing slash. The
+static build emits `consent/index.html`, and the host's redirect from
+`/consent` to `/consent/` drops the query string that carries `grant_id`.
 
 A confidential demo client is registered for trying the flow:
 

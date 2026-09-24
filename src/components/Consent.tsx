@@ -5,9 +5,11 @@ import {
   createGrant,
   getApp,
   getGrant,
+  listGalleries,
   rejectGrant,
   showError,
   type App,
+  type Gallery,
   type Grant,
 } from "../lib/appwrite";
 
@@ -20,14 +22,27 @@ const SCOPE_LABELS: Record<string, string> = {
 
 const button = "h-10 flex-1 rounded-lg text-sm font-medium transition-colors";
 
+/** A gallery the client asked for up front, if any; the user can still change it. */
+function requestedGallery(grant: Grant) {
+  try {
+    const details: { type: string; identifiers?: string[] }[] = JSON.parse(grant.authorizationDetails);
+    return details.find((d) => d.type === "gallery")?.identifiers?.[0];
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * OAuth2 consent screen. Appwrite sends users here with either a grant_id
  * (signed in) or the client's original authorize parameters (signed out).
+ * Besides the scopes, the user picks exactly one gallery to share.
  */
 export default function Consent() {
   const { status, user, open } = useAuthUI();
   const [grant, setGrant] = useState<Grant>();
   const [app, setApp] = useState<App>();
+  const [galleries, setGalleries] = useState<Gallery[]>();
+  const [galleryId, setGalleryId] = useState<string>();
   const params = new URLSearchParams(location.search);
   const grantId = params.get("grant_id");
 
@@ -42,14 +57,16 @@ export default function Consent() {
     }
     getGrant(grantId)
       .then(async (g) => {
+        const [a, list] = await Promise.all([getApp(g.appId), listGalleries()]);
         setGrant(g);
-        setApp(await getApp(g.appId));
+        setApp(a);
+        setGalleries(list);
+        setGalleryId(list.find((x) => x.$id === requestedGallery(g))?.$id ?? list[0]?.$id);
       })
       .catch(showError);
   }, [user, grantId]);
 
-  const decide = (action: (id: string) => Promise<string>) =>
-    action(grant!.$id).then((url) => location.assign(url), showError);
+  const decide = (action: () => Promise<string>) => action().then((url) => location.assign(url), showError);
 
   if (status === "loading") return null;
 
@@ -69,13 +86,11 @@ export default function Consent() {
               Sign in
             </button>
           </>
-        ) : !grant || !app ? (
+        ) : !grant || !app || !galleries ? (
           <p className="mt-4 text-sm text-neutral-400">Loading…</p>
         ) : (
           <>
-            <h1 className="mt-4 text-lg font-semibold">
-              {app.name} wants to access your account
-            </h1>
+            <h1 className="mt-4 text-lg font-semibold">{app.name} wants to access your account</h1>
             {app.tagline && <p className="mt-1 text-sm text-neutral-400">{app.tagline}</p>}
 
             <ul className="mt-5 flex flex-col gap-2 text-sm text-neutral-300">
@@ -87,16 +102,49 @@ export default function Consent() {
               ))}
             </ul>
 
+            <fieldset className="mt-5">
+              <legend className="text-sm text-neutral-300">Which gallery may it see?</legend>
+              {galleries.length === 0 ? (
+                <p className="mt-2 text-sm text-neutral-500">
+                  You have no galleries yet.{" "}
+                  <a href="/" className="underline hover:text-neutral-300">
+                    Create one
+                  </a>{" "}
+                  first.
+                </p>
+              ) : (
+                <div className="mt-2 flex flex-col gap-1">
+                  {galleries.map((g) => (
+                    <label
+                      key={g.$id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-neutral-800/70 has-checked:bg-neutral-800"
+                    >
+                      <input
+                        type="radio"
+                        name="gallery"
+                        value={g.$id}
+                        checked={galleryId === g.$id}
+                        onChange={() => setGalleryId(g.$id)}
+                        className="accent-neutral-100"
+                      />
+                      {g.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </fieldset>
+
             <div className="mt-6 flex gap-2">
               <button
-                onClick={() => decide(rejectGrant)}
+                onClick={() => decide(() => rejectGrant(grant.$id))}
                 className={`${button} border border-neutral-800 text-neutral-300 hover:bg-neutral-800`}
               >
                 Deny
               </button>
               <button
-                onClick={() => decide(approveGrant)}
-                className={`${button} bg-neutral-100 text-neutral-900 hover:bg-white`}
+                onClick={() => decide(() => approveGrant(grant.$id, galleryId!))}
+                disabled={!galleryId}
+                className={`${button} bg-neutral-100 text-neutral-900 hover:bg-white disabled:opacity-40`}
               >
                 Allow
               </button>

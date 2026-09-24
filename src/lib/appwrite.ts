@@ -12,8 +12,8 @@ export const PAGE_SIZE = 24; // Photos per page
 
 export type Gallery = Models.Row & { name: string };
 export type Photo = Models.Row & { galleryId: string; fileId: string; name: string };
-/** A pending OAuth2 authorization request. */
-export type Grant = { $id: string; appId: string; scopes: string[]; redirectUri: string };
+/** A pending OAuth2 authorization request. authorizationDetails is a JSON string (RFC 9396). */
+export type Grant = { $id: string; appId: string; scopes: string[]; redirectUri: string; authorizationDetails: string };
 /** Public details of the client app asking for access. */
 export type App = { $id: string; name: string; tagline: string };
 
@@ -136,9 +136,17 @@ export function getApp(appId: string): Promise<App> {
   return client.call("get", new URL(`${ENDPOINT}/apps/${appId}`), json);
 }
 
-/** Both return the URL that sends the user back to the client app. */
-export async function approveGrant(grantId: string): Promise<string> {
-  const { redirectUrl } = await client.call("post", new URL(`${OAUTH2}/approve`), json, { grant_id: grantId });
+/**
+ * Approve with the one gallery the user picked. The choice travels as a Rich
+ * Authorization Request detail (RFC 9396) and ends up in the access token, so
+ * the client can only reach that gallery. Returns the URL back to the client.
+ */
+export async function approveGrant(grantId: string, galleryId: string): Promise<string> {
+  const authorization_details = JSON.stringify([{ type: "gallery", identifiers: [galleryId] }]);
+  const { redirectUrl } = await client.call("post", new URL(`${OAUTH2}/approve`), json, {
+    grant_id: grantId,
+    authorization_details,
+  });
   return redirectUrl;
 }
 
