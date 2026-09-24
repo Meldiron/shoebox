@@ -138,16 +138,16 @@ always pass every setting):
 
 ```sh
 appwrite project update-o-auth-2-server --enabled \
-  --authorization-url "http://localhost:4321/consent" \
-  --scopes openid --scopes profile --scopes email \
+  --authorization-url "https://shoebox.appwrite.network/consent/" \
+  --scopes openid --scopes profile --scopes email --scopes phone --scopes gallery.read \
   --default-scopes openid --default-scopes profile --default-scopes email \
   --authorization-details-types gallery
 ```
 
-For the deployed site point `--authorization-url` at
-`https://shoebox.appwrite.network/consent/` with the trailing slash. The
-static build emits `consent/index.html`, and the host's redirect from
-`/consent` to `/consent/` drops the query string that carries `grant_id`.
+The trailing slash matters: the static build emits `consent/index.html`, and
+the host's redirect from `/consent` to `/consent/` drops the query string that
+carries `grant_id`. To work on the consent screen locally, point
+`--authorization-url` at `http://localhost:4321/consent` and switch back after.
 
 A confidential demo client is registered for trying the flow:
 
