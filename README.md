@@ -92,6 +92,64 @@ npm install
 npm run dev     # http://localhost:4321
 ```
 
+## Sign in with Shoebox (OAuth2 server)
+
+The Appwrite project is also an OAuth 2.1 / OpenID Connect provider, so other
+apps can offer "Sign in with Shoebox". Appwrite runs the protocol; this repo
+only hosts the consent screen at `/consent` (`src/components/Consent.tsx`).
+
+Discovery document:
+`https://fra.cloud.appwrite.io/v1/oauth2/6ab43a98000b9aedd03c/.well-known/openid-configuration`
+
+How the consent screen works:
+
+1. A client sends the user to the authorize endpoint. Appwrite redirects to
+   `/consent` with a `grant_id` if the user has a Shoebox session, or with the
+   client's original parameters if not.
+2. Signed-out users sign in with Auth UI on the page. `createGrant` then turns
+   the forwarded parameters into a grant and reloads with its id.
+3. `getGrant` and `getApp` load what is being asked and by whom.
+4. Allow calls `approveGrant`, Deny calls `rejectGrant`. Both return the URL
+   that sends the user back to the client, with a code or `access_denied`.
+
+Enabled with the CLI (the command replaces the whole OAuth2 server config, so
+always pass every setting):
+
+```sh
+appwrite project update-o-auth-2-server --enabled \
+  --authorization-url "http://localhost:4321/consent" \
+  --scopes openid --scopes profile --scopes email \
+  --default-scopes openid --default-scopes profile --default-scopes email
+```
+
+Point `--authorization-url` at `https://shoebox.appwrite.network/consent` for
+the deployed site.
+
+A confidential demo client is registered for trying the flow:
+
+```sh
+appwrite apps create --app-id demo-consumer --name "Demo consumer" --type confidential --enabled \
+  --tagline "Sample app that signs in with Shoebox" --redirect-uris "http://localhost:4100/oauth/callback"
+appwrite apps create-secret --app-id demo-consumer --show-secrets   # shown once
+```
+
+Open this in a browser to start a sign-in as that client:
+
+```
+https://fra.cloud.appwrite.io/v1/oauth2/6ab43a98000b9aedd03c/authorize
+  ?client_id=demo-consumer
+  &redirect_uri=http://localhost:4100/oauth/callback
+  &response_type=code&scope=openid profile email&state=123
+```
+
+After Allow, the browser lands on the callback with `?code=…`. Exchange it:
+
+```sh
+curl -X POST https://fra.cloud.appwrite.io/v1/oauth2/6ab43a98000b9aedd03c/token \
+  -d grant_type=authorization_code -d code=<CODE> -d client_id=demo-consumer \
+  -d client_secret=<SECRET> --data-urlencode redirect_uri=http://localhost:4100/oauth/callback
+```
+
 ## Deploy
 
 The app is an Appwrite Site: https://shoebox.appwrite.network

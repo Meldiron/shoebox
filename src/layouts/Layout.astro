@@ -1,0 +1,41 @@
+---
+---
+
+<html lang="en" class="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="generator" content={Astro.generator} />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <title>Shoebox</title>
+
+        <style is:global>
+            @import "tailwindcss";
+
+            :root {
+                color-scheme: dark;
+            }
+
+            html,
+            body {
+                min-height: 100%;
+                background-color: var(--color-neutral-950);
+                color: var(--color-neutral-100);
+            }
+
+            body {
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
+            }
+
+            ::selection {
+                background-color: var(--color-neutral-700);
+                color: var(--color-neutral-50);
+            }
+        </style>
+    </head>
+
+    <body class="min-h-screen bg-neutral-950 text-neutral-100">
+        <slot />
+    </body>
+</html>
