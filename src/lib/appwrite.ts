@@ -3,7 +3,6 @@ import { ID, Permission, Query, Role, Storage, TablesDB, type Client, type Model
 
 export const ENDPOINT = "https://fra.cloud.appwrite.io/v1";
 export const PROJECT = "6ab43a98000b9aedd03c";
-export const GOOGLE_CLIENT_ID = "121958446195-mf6fu6ag29mnf83i8v7pg92kug3amen3.apps.googleusercontent.com"; // Google Cloud web client, for One Tap
 export const DATABASE = "shoebox"; // Database
 export const GALLERIES = "galleries"; // Table
 export const PHOTOS = "photos"; // Table
@@ -23,10 +22,7 @@ export type App = { $id: string; name: string; tagline: string };
 AuthUI.init({
   endpoint: ENDPOINT,
   project: PROJECT,
-  methods: { emailPassword: true, oauth: ["google"] },
-  // One Tap is a soft prompt; the Google button stays as the fallback when the browser hides it.
-  oneTap: true,
-  googleClientId: GOOGLE_CLIENT_ID,
+  methods: { emailPassword: true },
   branding: { name: "Shoebox", theme: "dark" },
 });
 

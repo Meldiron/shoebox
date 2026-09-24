@@ -85,23 +85,6 @@ appwrite storage create-bucket --bucket-id photos --name Photos --enabled \
 The bucket rejects anything that is not an image, and the file picker only
 offers images (`accept="image/*"`).
 
-Google sign-in (the button and One Tap) uses one Google Cloud web client. Its
-ID is in `lib/appwrite.ts` for One Tap, and the Appwrite provider needs it too:
-
-```sh
-appwrite project update-o-auth-2-google --client-id <ID>.apps.googleusercontent.com --enabled
-```
-
-One Tap creates the session from a Google ID token, which the provider only
-accepts with "Native sign-in" switched on. The CLI has no flag for it; use
-the Console (Auth, Settings, Google) or `PATCH /v1/project/oauth2/google`
-with `{"nativeEnabled": true}`. The button flow also needs `--client-secret`.
-
-In Google Cloud, add `https://shoebox.appwrite.network` (and
-`http://localhost:4321`) as an authorized JavaScript origin for One Tap, and
-`https://fra.cloud.appwrite.io/v1/account/sessions/oauth2/callback/google/6ab43a98000b9aedd03c`
-as an authorized redirect URI for the button.
-
 `localhost` works without registering a platform.
 
 ## Run
