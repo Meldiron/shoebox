@@ -75,9 +75,11 @@ export function Photos({ gallery }: { gallery: Gallery }) {
           <li key={photo.$id}>
             <button
               onClick={() => setOpen(photo)}
+              draggable // drop it on a gallery tab to move it there
+              onDragStart={(e) => e.dataTransfer.setData("text/plain", photo.$id)}
               className="block aspect-square w-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 transition-colors hover:border-neutral-600"
             >
-              <img src={thumbnailUrl(photo)} alt={photo.name} className="size-full object-cover" />
+              <img src={thumbnailUrl(photo)} alt={photo.name} draggable={false} className="size-full object-cover" />
             </button>
           </li>
         ))}

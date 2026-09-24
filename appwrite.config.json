@@ -44,6 +44,43 @@
             }
         }
     },
+    "functions": [
+        {
+            "$id": "gallery-api",
+            "name": "Gallery API",
+            "runtime": "bun-1.4",
+            "path": "functions/gallery-api",
+            "previewDomainTarget": "region",
+            "previewDomainLabel": "shoebox-gallery-api",
+            "entrypoint": "src/main.ts",
+            "execute": [
+                "any"
+            ],
+            "enabled": true,
+            "logging": true,
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "commands": "bun install",
+            "scopes": [
+                "oauth2.introspect",
+                "rows.read",
+                "tables.read",
+                "files.read",
+                "buckets.read"
+            ],
+            "installationId": "",
+            "providerRepositoryId": "",
+            "providerBranch": "",
+            "providerSilentMode": false,
+            "providerRootDirectory": "",
+            "providerBranches": [],
+            "providerPaths": [],
+            "buildSpecification": "s-2vcpu-2gb",
+            "runtimeSpecification": "s-0.5vcpu-512mb",
+            "deploymentRetention": 0
+        }
+    ],
     "sites": [
         {
             "$id": "shoebox",

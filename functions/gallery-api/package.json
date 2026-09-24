@@ -1,0 +1,13 @@
+{
+  "name": "gallery-api",
+  "version": "1.0.0",
+  "description": "Resource server for Shoebox: lists one gallery's photos as presigned S3 URLs for OAuth2 access tokens",
+  "type": "module",
+  "main": "src/main.ts",
+  "dependencies": {
+    "node-appwrite": "^29.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0"
+  }
+}

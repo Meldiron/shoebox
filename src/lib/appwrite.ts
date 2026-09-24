@@ -39,14 +39,14 @@ function ownerOnly() {
 
 /* Galleries --------------------------------------------------------------- */
 
-/** Row security means this only returns the signed-in user's galleries. */
+/** Row security means this only returns the signed-in user's galleries. A new user gets an "Inbox" to start with. */
 export async function listGalleries() {
   const { rows } = await tables.listRows<Gallery>({
     databaseId: DATABASE,
     tableId: GALLERIES,
     queries: [Query.limit(MAX_GALLERIES)],
   });
-  return rows;
+  return rows.length ? rows : [await createGallery("Inbox")];
 }
 
 export function createGallery(name: string) {
@@ -57,6 +57,10 @@ export function createGallery(name: string) {
     data: { name },
     permissions: ownerOnly(),
   });
+}
+
+export function renameGallery(gallery: Gallery, name: string) {
+  return tables.updateRow<Gallery>({ databaseId: DATABASE, tableId: GALLERIES, rowId: gallery.$id, data: { name } });
 }
 
 /** Deletes the photos inside first, then the gallery itself. */
@@ -79,10 +83,16 @@ export async function listPhotos(galleryId: string, after?: Photo) {
   return rows;
 }
 
-/** The bytes go to Storage; a row describing the file goes to TablesDB. */
+/**
+ * The bytes go to Storage; a row describing the file goes to TablesDB.
+ * Files are stored as <galleryId>/<fileId>.<ext> so every object key is unique,
+ * which the S3-compatible API needs. The row keeps the original name.
+ */
 export async function uploadPhoto(galleryId: string, file: File) {
   const permissions = ownerOnly();
-  const uploaded = await storage.createFile({ bucketId: BUCKET, fileId: ID.unique(), file, permissions });
+  const fileId = ID.unique();
+  const stored = new File([file], `${fileId}.${file.name.split(".").pop()}`, { type: file.type });
+  const uploaded = await storage.createFile({ bucketId: BUCKET, fileId, file: stored, folder: galleryId, permissions });
   return tables.createRow<Photo>({
     databaseId: DATABASE,
     tableId: PHOTOS,
@@ -90,6 +100,11 @@ export async function uploadPhoto(galleryId: string, file: File) {
     data: { galleryId, fileId: uploaded.$id, name: file.name },
     permissions,
   });
+}
+
+/** Moves a photo to another gallery. The file stays where it is; only the row changes. */
+export function movePhoto(photoId: string, galleryId: string) {
+  return tables.updateRow<Photo>({ databaseId: DATABASE, tableId: PHOTOS, rowId: photoId, data: { galleryId } });
 }
 
 export async function deletePhoto(photo: Photo) {

@@ -18,6 +18,7 @@ const SCOPE_LABELS: Record<string, string> = {
   profile: "See your name",
   email: "See your email address",
   phone: "See your phone number",
+  "gallery.read": "See the photos in one gallery",
 };
 
 const button = "h-10 flex-1 rounded-lg text-sm font-medium transition-colors";
@@ -104,34 +105,24 @@ export default function Consent() {
 
             <fieldset className="mt-5">
               <legend className="text-sm text-neutral-300">Which gallery may it see?</legend>
-              {galleries.length === 0 ? (
-                <p className="mt-2 text-sm text-neutral-500">
-                  You have no galleries yet.{" "}
-                  <a href="/" className="underline hover:text-neutral-300">
-                    Create one
-                  </a>{" "}
-                  first.
-                </p>
-              ) : (
-                <div className="mt-2 flex flex-col gap-1">
-                  {galleries.map((g) => (
-                    <label
-                      key={g.$id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-neutral-800/70 has-checked:bg-neutral-800"
-                    >
-                      <input
-                        type="radio"
-                        name="gallery"
-                        value={g.$id}
-                        checked={galleryId === g.$id}
-                        onChange={() => setGalleryId(g.$id)}
-                        className="accent-neutral-100"
-                      />
-                      {g.name}
-                    </label>
-                  ))}
-                </div>
-              )}
+              <div className="mt-2 flex flex-col gap-1">
+                {galleries.map((g) => (
+                  <label
+                    key={g.$id}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-neutral-800/70 has-checked:bg-neutral-800"
+                  >
+                    <input
+                      type="radio"
+                      name="gallery"
+                      value={g.$id}
+                      checked={galleryId === g.$id}
+                      onChange={() => setGalleryId(g.$id)}
+                      className="accent-neutral-100"
+                    />
+                    {g.name}
+                  </label>
+                ))}
+              </div>
             </fieldset>
 
             <div className="mt-6 flex gap-2">

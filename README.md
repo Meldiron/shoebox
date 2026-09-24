@@ -21,11 +21,13 @@ signs in with, so every call carries the session:
 
 | Function                       | Does                                                |
 | ------------------------------ | --------------------------------------------------- |
-| `listGalleries()`              | Up to 100 rows the signed-in user can read          |
+| `listGalleries()`              | Up to 100 rows the signed-in user can read; creates "Inbox" for a user with none |
 | `createGallery(name)`          | New row with owner-only permissions                 |
+| `renameGallery(gallery, name)` | Updates the name (double-click a tab in the app)    |
 | `deleteGallery(gallery)`       | Deletes its photos, then the row                    |
 | `listPhotos(galleryId, after?)`| One page of 24, newest first; `after` is the cursor |
 | `uploadPhoto(galleryId, file)` | File to Storage, then a row to TablesDB             |
+| `movePhoto(photoId, galleryId)`| Row update only (drag a tile onto a gallery tab)    |
 | `deletePhoto(photo)`           | Row, then file                                      |
 | `thumbnailUrl(photo)`          | 600×600 preview URL                                 |
 | `fileUrl(photo)`               | Original file URL                                   |
@@ -129,7 +131,7 @@ both the scope and a `gallery` detail that names the gallery being read.
 
 The radio list defaults to the first gallery, or to the one a client
 preselected in its own `authorization_details`, and Allow stays disabled
-until one is chosen. A user with no galleries is asked to create one first.
+until one is chosen. Every user has at least an "Inbox" gallery.
 
 Enabled with the CLI (the command replaces the whole OAuth2 server config, so
 always pass every setting):
@@ -171,6 +173,36 @@ curl -X POST https://fra.cloud.appwrite.io/v1/oauth2/6ab43a98000b9aedd03c/token 
   -d grant_type=authorization_code -d code=<CODE> -d client_id=demo-consumer \
   -d client_secret=<SECRET> --data-urlencode redirect_uri=http://localhost:4100/oauth/callback
 ```
+
+## Gallery API for clients (Bun function)
+
+Clients that signed in with Shoebox can list the granted gallery through the
+`gallery-api` function at `https://shoebox-gallery-api.fra.appwrite.run`:
+
+```
+GET https://shoebox-gallery-api.fra.appwrite.run/?limit=24&offset=0
+Authorization: Bearer <ACCESS_TOKEN with scope gallery.read>
+```
+
+It validates the token with Appwrite's introspection endpoint, requires the
+`gallery.read` scope, reads the gallery from the token's `authorization_details`,
+checks the gallery belongs to the token's user, and returns one page of photos
+as presigned S3 URLs valid for an hour. See `functions/gallery-api/README.md`.
+
+Setup that was done for it:
+
+- `gallery.read` added to the OAuth2 server's scopes (see the command above).
+- A project API key with `oauth2.introspect`, `rows.read`, `tables.read`,
+  `files.read`, `buckets.read`, stored on the function as `APPWRITE_API_KEY`.
+  The CLI cannot create standard keys, so create it in the Console under
+  Overview > Integrations > API keys.
+- The `photos` bucket has encryption disabled, which Appwrite's S3 API requires.
+  Files uploaded while encryption was on are served as ciphertext over S3 and
+  need re-uploading.
+- Uploads are stored as `<galleryId>/<fileId>.<ext>` so S3 object keys are unique.
+
+Deploy changes with `appwrite push function --all` (the function is recorded in
+`appwrite.config.json`).
 
 ## Deploy
 

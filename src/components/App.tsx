@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { AuthUIUserButton, useAuthUI } from "@getauthui/core/react";
-import { MAX_GALLERIES, createGallery, deleteGallery, listGalleries, showError, type Gallery } from "../lib/appwrite";
+import {
+  MAX_GALLERIES,
+  createGallery,
+  deleteGallery,
+  listGalleries,
+  movePhoto,
+  renameGallery,
+  showError,
+  type Gallery,
+} from "../lib/appwrite";
 import { Photos } from "./Photos";
 
 export default function App() {
@@ -27,18 +36,29 @@ export default function App() {
 const tab = "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors";
 const tabActive = "bg-neutral-100 text-neutral-900";
 const tabIdle = "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100";
+// The inline name field looks like the active tab; the caret is the only editing cue.
+const tabInput = "h-8 w-40 rounded-full bg-neutral-100 px-4 text-sm font-medium text-neutral-900 outline-none placeholder:text-neutral-500";
 
 function Galleries() {
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [activeId, setActiveId] = useState<string>();
   const [adding, setAdding] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [dropTarget, setDropTarget] = useState<string>(); // gallery a photo is being dragged over
+  const [version, setVersion] = useState(0); // bumped after a move so the photo list reloads
 
   useEffect(() => {
     listGalleries().then((rows) => {
       setGalleries(rows);
-      setActiveId(rows[0]?.$id);
+      const fromUrl = new URLSearchParams(location.search).get("gallery");
+      setActiveId(rows.find((g) => g.$id === fromUrl)?.$id ?? rows[0]?.$id);
     }, showError);
   }, []);
+
+  // Keep the open gallery in the URL so a refresh lands on the same one.
+  useEffect(() => {
+    if (activeId) history.replaceState(null, "", `?gallery=${activeId}`);
+  }, [activeId]);
 
   async function add(name: string) {
     const gallery = await createGallery(name);
@@ -47,37 +67,80 @@ function Galleries() {
     setAdding(false);
   }
 
+  async function rename(gallery: Gallery, name: string) {
+    const updated = await renameGallery(gallery, name);
+    setGalleries(galleries.map((g) => (g.$id === updated.$id ? updated : g)));
+    setRenaming(false);
+  }
+
+  async function move(photoId: string, gallery: Gallery) {
+    await movePhoto(photoId, gallery.$id);
+    setVersion((v) => v + 1);
+  }
+
   async function remove(gallery: Gallery) {
     if (!confirm(`Delete "${gallery.name}" and its files?`)) return;
     await deleteGallery(gallery);
     const rest = galleries.filter((g) => g.$id !== gallery.$id);
-    setGalleries(rest);
-    setActiveId(rest[0]?.$id);
+    const next = rest.length ? rest : await listGalleries(); // deleting the last one brings back an Inbox
+    setGalleries(next);
+    setActiveId(next[0].$id);
   }
 
   const active = galleries.find((g) => g.$id === activeId);
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-2">
+      <div className="sticky top-0 z-10 flex items-center gap-2 bg-neutral-950 py-3">
         <div role="tablist" className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-          {galleries.map((g) => (
-            <button
-              key={g.$id}
-              role="tab"
-              aria-selected={g.$id === activeId}
-              onClick={() => setActiveId(g.$id)}
-              className={`${tab} ${g.$id === activeId ? tabActive : tabIdle}`}
-            >
-              {g.name}
-            </button>
-          ))}
+          {galleries.map((g) =>
+            renaming && g.$id === activeId ? (
+              <input
+                key={g.$id}
+                autoFocus
+                defaultValue={g.name}
+                aria-label="Gallery name"
+                className={tabInput}
+                onKeyDown={(e) => {
+                  const name = e.currentTarget.value.trim();
+                  if (e.key === "Enter" && name) rename(g, name).catch(showError);
+                  if (e.key === "Escape") setRenaming(false);
+                }}
+                onBlur={() => setRenaming(false)}
+              />
+            ) : (
+              <button
+                key={g.$id}
+                role="tab"
+                aria-selected={g.$id === activeId}
+                title="Double-click to rename"
+                onClick={() => setActiveId(g.$id)}
+                onDoubleClick={() => setRenaming(true)}
+                // A photo tile dragged from the grid can be dropped here to move it into this gallery.
+                onDragOver={(e) => {
+                  if (g.$id === activeId) return;
+                  e.preventDefault();
+                  setDropTarget(g.$id);
+                }}
+                onDragLeave={() => setDropTarget(undefined)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDropTarget(undefined);
+                  const photoId = e.dataTransfer.getData("text/plain");
+                  if (photoId) move(photoId, g).catch(showError);
+                }}
+                className={`${tab} ${g.$id === activeId ? tabActive : tabIdle} ${dropTarget === g.$id ? "ring-2 ring-neutral-400" : ""}`}
+              >
+                {g.name}
+              </button>
+            ),
+          )}
           {adding ? (
             <input
               autoFocus
               placeholder="Name"
               aria-label="New gallery"
-              className="h-8 w-40 rounded-full bg-neutral-900 px-4 text-sm text-neutral-50 ring-1 ring-neutral-700 outline-none placeholder:text-neutral-500 focus:ring-neutral-500"
+              className={tabInput}
               onKeyDown={(e) => {
                 const name = e.currentTarget.value.trim();
                 if (e.key === "Enter" && name) add(name).catch(showError);
@@ -107,7 +170,7 @@ function Galleries() {
         )}
       </div>
 
-      {active && <Photos key={active.$id} gallery={active} />}
+      {active && <Photos key={active.$id + version} gallery={active} />}
     </div>
   );
 }
@@ -140,13 +203,18 @@ function Preview({ onSignIn }: { onSignIn: () => void }) {
           ))}
         </ul>
       </div>
-      <div className="absolute inset-0 flex items-center justify-center bg-linear-to-b from-transparent via-neutral-950/40 to-neutral-950">
-        <button
-          onClick={onSignIn}
-          className="rounded-lg bg-neutral-100 px-6 py-2.5 text-sm font-medium text-neutral-900 shadow-lg shadow-black/40 hover:bg-white"
-        >
-          Sign in
-        </button>
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent via-neutral-950/40 to-neutral-950" />
+      {/* Same grid tracks as the tiles, starting below the tabs. An empty square cell gives the row a tile's height; the button spans that row, so it is centred on the first row of tiles. */}
+      <div className="absolute inset-x-0 top-13 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="col-start-1 row-start-1 aspect-square" />
+        <div className="col-span-full row-start-1 grid place-items-center">
+          <button
+            onClick={onSignIn}
+            className="rounded-lg bg-neutral-100 px-6 py-2.5 text-sm font-medium text-neutral-900 shadow-lg shadow-black/40 hover:bg-white"
+          >
+            Sign in
+          </button>
+        </div>
       </div>
     </div>
   );
