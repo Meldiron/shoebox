@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AuthUIUserButton, useAuthUI } from "@getauthui/core/react";
+import { AuthUIButton, AuthUIUserButton, Show, useAuthUI } from "@getauthui/core/react";
 import {
   MAX_GALLERIES,
   createGallery,
@@ -13,7 +13,7 @@ import {
 import { Photos } from "./Photos";
 
 export default function App() {
-  const { status, user, open } = useAuthUI();
+  const { status, user } = useAuthUI();
 
   return (
     <>
@@ -22,12 +22,17 @@ export default function App() {
           <a href="/" className="font-semibold tracking-tight">
             Shoebox
           </a>
-          <AuthUIUserButton />
+          <Show when="signed-in">
+            <AuthUIUserButton />
+          </Show>
+          <Show when="signed-out">
+            <AuthUIButton>Sign in</AuthUIButton>
+          </Show>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
-        {status === "loading" ? null : user ? <Galleries key={user.$id} /> : <Preview onSignIn={() => open()} />}
+        {status === "loading" ? null : user ? <Galleries key={user.$id} /> : <Preview />}
       </main>
     </>
   );
@@ -191,8 +196,8 @@ const sampleTiles = [
   "bg-linear-to-bl from-neutral-700 to-neutral-900",
 ];
 
-/** Signed-out view: a dimmed mock of the app with the sign-in button on top. */
-function Preview({ onSignIn }: { onSignIn: () => void }) {
+/** Signed-out view: a dimmed mock of the app. */
+function Preview() {
   return (
     <div className="relative">
       <div className="flex flex-col gap-5 opacity-70 select-none" aria-hidden="true">
@@ -209,18 +214,6 @@ function Preview({ onSignIn }: { onSignIn: () => void }) {
         </ul>
       </div>
       <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent via-neutral-950/40 to-neutral-950" />
-      {/* Same grid tracks as the tiles, starting below the tabs. An empty square cell gives the row a tile's height; the button spans that row, so it is centred on the first row of tiles. */}
-      <div className="absolute inset-x-0 top-13 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <div className="col-start-1 row-start-1 aspect-square" />
-        <div className="col-span-full row-start-1 grid place-items-center">
-          <button
-            onClick={onSignIn}
-            className="rounded-lg bg-neutral-100 px-6 py-2.5 text-sm font-medium text-neutral-900 shadow-lg shadow-black/40 hover:bg-white"
-          >
-            Sign in
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
