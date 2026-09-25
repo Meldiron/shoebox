@@ -39,6 +39,9 @@ const tabIdle = "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100";
 // The inline name field looks like the active tab; the caret is the only editing cue.
 const tabInput = "h-8 w-40 rounded-full bg-neutral-100 px-4 text-sm font-medium text-neutral-900 outline-none placeholder:text-neutral-500";
 
+/** A user always has a gallery to land in; one with none gets an "Inbox". */
+const orInbox = async (rows: Gallery[]) => (rows.length ? rows : [await createGallery("Inbox")]);
+
 function Galleries() {
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [activeId, setActiveId] = useState<string>();
@@ -48,11 +51,13 @@ function Galleries() {
   const [version, setVersion] = useState(0); // bumped after a move so the photo list reloads
 
   useEffect(() => {
-    listGalleries().then((rows) => {
-      setGalleries(rows);
-      const fromUrl = new URLSearchParams(location.search).get("gallery");
-      setActiveId(rows.find((g) => g.$id === fromUrl)?.$id ?? rows[0]?.$id);
-    }, showError);
+    listGalleries()
+      .then(orInbox)
+      .then((rows) => {
+        setGalleries(rows);
+        const fromUrl = new URLSearchParams(location.search).get("gallery");
+        setActiveId(rows.find((g) => g.$id === fromUrl)?.$id ?? rows[0].$id);
+      }, showError);
   }, []);
 
   // Keep the open gallery in the URL so a refresh lands on the same one.
@@ -82,7 +87,7 @@ function Galleries() {
     if (!confirm(`Delete "${gallery.name}" and its files?`)) return;
     await deleteGallery(gallery);
     const rest = galleries.filter((g) => g.$id !== gallery.$id);
-    const next = rest.length ? rest : await listGalleries(); // deleting the last one brings back an Inbox
+    const next = await orInbox(rest); // deleting the last one brings back an Inbox
     setGalleries(next);
     setActiveId(next[0].$id);
   }

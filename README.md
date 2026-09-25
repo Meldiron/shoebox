@@ -21,7 +21,7 @@ signs in with, so every call carries the session:
 
 | Function                       | Does                                                |
 | ------------------------------ | --------------------------------------------------- |
-| `listGalleries()`              | Up to 100 rows the signed-in user can read; creates "Inbox" for a user with none |
+| `listGalleries()`              | Up to 100 rows the signed-in user can read          |
 | `createGallery(name)`          | New row with owner-only permissions                 |
 | `renameGallery(gallery, name)` | Updates the name (double-click a tab in the app)    |
 | `deleteGallery(gallery)`       | Deletes its photos, then the row                    |
@@ -131,7 +131,7 @@ both the scope and a `gallery` detail that names the gallery being read.
 
 The radio list defaults to the first gallery, or to the one a client
 preselected in its own `authorization_details`, and Allow stays disabled
-until one is chosen. Every user has at least an "Inbox" gallery.
+until one is chosen.
 
 Enabled with the CLI (the command replaces the whole OAuth2 server config, so
 always pass every setting):
