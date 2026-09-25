@@ -44,7 +44,7 @@ preflight for the `Authorization` header, so browser apps can call it directly.
 
 ## How it works
 
-1. `POST /v1/oauth2/<PROJECT>/introspect` validates the token and returns its
+1. `Oauth2.introspect` (node-appwrite 30) validates the token and returns its
    `scope`, `sub`, and `authorization_details`.
 2. The `gallery` detail names the gallery chosen on the consent screen.
 3. The gallery row must carry `read("user:<sub>")`, so a token can only reach
@@ -53,7 +53,7 @@ preflight for the `Authorization` header, so browser apps can call it directly.
    give the object keys (`<galleryId>/<fileId>.<ext>`).
 5. `Bun.S3Client.presign` signs each key against Appwrite's S3-compatible
    endpoint `https://<REGION>.cloud.appwrite.io/v1/s3` (access key = project
-   ID, secret = an API key with `files.read` and `buckets.read`).
+   ID, secret = a stored API key with `files.read` and `buckets.read`).
 
 ## Configuration
 
@@ -63,11 +63,13 @@ preflight for the `Authorization` header, so browser apps can call it directly.
 | Entrypoint  | `src/main.ts`                                                 |
 | Build       | `bun install`                                                 |
 | Execute     | `any` (the bearer token is the real access control)          |
-| Variables   | `APPWRITE_API_KEY`: secret of a project API key with `oauth2.introspect`, `rows.read`, `tables.read`, `files.read`, `buckets.read` |
+| Scopes      | `oauth2.introspect`, `rows.read`, `tables.read`, `files.read`, `buckets.read` |
+| Variables   | `APPWRITE_API_KEY`: secret of a project API key with `files.read` and `buckets.read`, used only to sign S3 URLs |
 
-The function uses that stored key for every Appwrite call and as the S3
-secret. The key Appwrite generates per execution cannot introspect tokens or
-sign S3 requests, so it is not used.
+Every Appwrite call uses the dynamic API key Appwrite issues per execution
+(`x-appwrite-key` request header), which carries the scopes above. The S3
+signature is the one exception: Appwrite's S3 API only accepts signatures made
+with a stored project API key, so that one stays in a variable.
 
 The `photos` bucket must have encryption disabled; Appwrite's S3 API refuses
 encrypted or compressed buckets.

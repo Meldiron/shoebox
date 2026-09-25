@@ -193,10 +193,14 @@ as presigned S3 URLs valid for an hour. See `functions/gallery-api/README.md`.
 Setup that was done for it:
 
 - `gallery.read` added to the OAuth2 server's scopes (see the command above).
-- A project API key with `oauth2.introspect`, `rows.read`, `tables.read`,
-  `files.read`, `buckets.read`, stored on the function as `APPWRITE_API_KEY`.
-  The CLI cannot create standard keys, so create it in the Console under
-  Overview > Integrations > API keys.
+- Function scopes `oauth2.introspect`, `rows.read`, `tables.read`,
+  `files.read`, `buckets.read`. The dynamic API key Appwrite issues per
+  execution (`x-appwrite-key` header) carries them and is used for every
+  Appwrite call.
+- A project API key with `files.read` and `buckets.read`, stored on the
+  function as `APPWRITE_API_KEY`, only to sign S3 URLs: Appwrite's S3 API does
+  not accept the dynamic key. The CLI cannot create standard keys, so create it
+  in the Console under Overview > Integrations > API keys.
 - The `photos` bucket has encryption disabled, which Appwrite's S3 API requires.
   Files uploaded while encryption was on are served as ciphertext over S3 and
   need re-uploading.

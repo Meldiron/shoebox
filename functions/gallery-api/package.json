@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/main.ts",
   "dependencies": {
-    "node-appwrite": "^29.0.0"
+    "node-appwrite": "30.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0"
