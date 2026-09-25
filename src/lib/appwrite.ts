@@ -1,6 +1,8 @@
 import { AuthUI } from "@getauthui/core";
 import {
+  Apps,
   ID,
+  Oauth2,
   Query,
   Storage,
   TablesDB,
@@ -23,16 +25,9 @@ export type Photo = Models.Row & {
   fileId: string;
   name: string;
 };
-/** A pending OAuth2 authorization request. authorizationDetails is a JSON string (RFC 9396). */
-export type Grant = {
-  $id: string;
-  appId: string;
-  scopes: string[];
-  redirectUri: string;
-  authorizationDetails: string;
-};
-/** Public details of the client app asking for access. */
-export type App = { $id: string; name: string; tagline: string };
+/** authorizationDetails is a JSON string (RFC 9396). */
+export type Grant = Models.Oauth2Grant;
+export type App = Models.App;
 
 /* Auth -------------------------------------------------------------------- */
 
@@ -46,6 +41,8 @@ AuthUI.init({
 const client = AuthUI.getClient() as Client;
 const tables = new TablesDB(client);
 const storage = new Storage(client);
+const oauth2 = new Oauth2(client);
+const apps = new Apps(client);
 
 /* Galleries --------------------------------------------------------------- */
 
@@ -79,6 +76,7 @@ export function renameGallery(gallery: Gallery, name: string) {
 
 export async function deleteGallery(gallery: Gallery) {
   // TODO: Background job to delete gallery photos
+
   await tables.deleteRow({
     databaseId: DATABASE_ID,
     tableId: GALLERIES_TABLE_ID,
@@ -178,53 +176,49 @@ export function downloadUrl(photo: Photo) {
 
 /* OAuth2 server ----------------------------------------------------------- */
 
-const OAUTH2 = `${ENDPOINT}/oauth2/${PROJECT_ID}`;
-const json = {
-  "X-Appwrite-Project": PROJECT_ID,
-  accept: "application/json",
-  "content-type": "application/json",
-};
-
-export function getGrant(grantId: string): Promise<Grant> {
-  return client.call("get", new URL(`${OAUTH2}/grants/${grantId}`), json);
+export function getGrant(grantId: string) {
+  return oauth2.getGrant({ grantId });
 }
 
-export function getApp(appId: string): Promise<App> {
-  return client.call("get", new URL(`${ENDPOINT}/apps/${appId}`), json);
+export function getApp(appId: string) {
+  return apps.get({ appId });
 }
 
-export function createGrant(
-  params: URLSearchParams,
-): Promise<{ grantId: string; redirectUrl: string }> {
-  return client.call("get", new URL(`${OAUTH2}/authorize?${params}`), json);
+export function createGrant(params: URLSearchParams) {
+  const get = (key: string) => params.get(key) ?? undefined;
+
+  return oauth2.authorize({
+    clientId: get("client_id"),
+    redirectUri: get("redirect_uri"),
+    responseType: get("response_type"),
+    scope: get("scope"),
+    state: get("state"),
+    nonce: get("nonce"),
+    codeChallenge: get("code_challenge"),
+    codeChallengeMethod: get("code_challenge_method"),
+    prompt: get("prompt"),
+    maxAge: params.has("max_age") ? Number(get("max_age")) : undefined,
+    authorizationDetails: get("authorization_details"),
+    resource: get("resource"),
+    audience: get("audience"),
+    requestUri: get("request_uri"),
+  });
 }
 
-export async function approveGrant(
-  grantId: string,
-  galleryId: string,
-): Promise<string> {
-  const authorization_details = JSON.stringify([
-    { type: "gallery", identifiers: [galleryId] },
-  ]);
-  const { redirectUrl } = await client.call(
-    "post",
-    new URL(`${OAUTH2}/approve`),
-    json,
-    {
-      grant_id: grantId,
-      authorization_details,
-    },
-  );
+export async function approveGrant(grantId: string, galleryId: string) {
+  const details = [{ type: "gallery", identifiers: [galleryId] }];
+
+  const { redirectUrl } = await oauth2.approve({
+    grantId,
+    authorizationDetails: JSON.stringify(details),
+  });
+
   return redirectUrl;
 }
 
-export async function rejectGrant(grantId: string): Promise<string> {
-  const { redirectUrl } = await client.call(
-    "post",
-    new URL(`${OAUTH2}/reject`),
-    json,
-    { grant_id: grantId },
-  );
+export async function rejectGrant(grantId: string) {
+  const { redirectUrl } = await oauth2.reject({ grantId });
+
   return redirectUrl;
 }
 

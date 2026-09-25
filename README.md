@@ -98,7 +98,8 @@ npm run dev     # http://localhost:4321
 
 The Appwrite project is also an OAuth 2.1 / OpenID Connect provider, so other
 apps can offer "Sign in with Shoebox". Appwrite runs the protocol; this repo
-only hosts the consent screen at `/consent` (`src/components/Consent.tsx`).
+only hosts the consent screen at `/consent` (`src/components/Consent.tsx`),
+which calls it through the Web SDK's `Oauth2` and `Apps` services (28.1+).
 
 Discovery document:
 `https://fra.cloud.appwrite.io/v1/oauth2/6ab43a98000b9aedd03c/.well-known/openid-configuration`
